@@ -1,6 +1,6 @@
 [package]
 name = "decimal_processing_xlsx_vesmar"
-version = "0.4.1"
+version = "0.4.2"
 
 edition = "2021"
 
@@ -11,7 +11,6 @@ crate_type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "*", features = ["extension-module", "abi3-py37"] }
 calamine = "0.22.0"
-rayon = "1.7.0"
 unicode-segmentation = "1.10.1"
 xlsxwriter = "0.6.0"
 
@@ -26,9 +25,9 @@ rustflags = [
     "-C", "link-arg=dynamic_lookup",
 ]
 
-[package.metadata.maturin.manylinux]
-py36 = true
-py37 = true
-py38 = true
-py39 = true
-py310 = true
+#[package.metadata.maturin.manylinux]
+#py36 = true
+#py37 = true
+#py38 = true
+#py39 = true
+#py310 = true
