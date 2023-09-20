@@ -2,7 +2,7 @@ mod test;
 
 use std::time::Instant;
 use calamine::{ open_workbook, Reader, Xlsx};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+// use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use xlsxwriter::prelude::*;
 use pyo3::prelude::*;
 use unicode_segmentation::UnicodeSegmentation;
@@ -36,7 +36,7 @@ fn contains_number(input: &str) -> bool {
 fn extract_value(input: &str) -> (String, String, String) {
     let mut prefix: String = "".to_string();
     let mut postfix: String = "".to_string();
-    let mut value: String = "".to_string();
+    let value: String;
 
     if input.parse::<f32>().is_ok() {
         value = input.to_string();
@@ -65,19 +65,6 @@ fn extract_value(input: &str) -> (String, String, String) {
     (value, prefix, postfix)
 }
 
-#[pyfunction]
-fn count_postfix(input: &str, character: char) -> u32 {
-    let mut zero_counter = 0u32;
-    let characters = input.graphemes(true);
-    for char in characters.rev() {
-        if char == character.to_string() {
-            zero_counter += 1;
-        } else {
-            return zero_counter;
-        }
-    }
-    zero_counter
-}
 
 #[pyfunction]
 fn reg_replace_common(input: String) -> String {
@@ -86,17 +73,18 @@ fn reg_replace_common(input: String) -> String {
     }
     let output = input.replace(",", ".");
 
-   output
+    output
 }
 
 
 #[pyfunction]
-pub fn process(fp: &str, input_dir: &str, output_dir: &str) -> PyResult<()> {
-    let output_workbook = Workbook::new(&(output_dir.to_string() + fp)).unwrap();
-    let mut workbook: Xlsx<_> = open_workbook(&(input_dir.to_string() + fp)).unwrap();
-    let names = workbook.sheet_names();
-    for sheet_name in names {
-        let input_sheet = workbook.worksheet_range(&sheet_name).unwrap().unwrap(); // get sheet contents
+pub fn process(input_path: &str, output_path: &str) -> PyResult<()> {
+    // print!("{fp} == {input_dir} == {output_dir}");
+    let mut input_workbook: Xlsx<_> = open_workbook(input_path).unwrap();
+    let output_workbook = Workbook::new(output_path).unwrap();
+    let sheet_names = input_workbook.sheet_names();
+    for sheet_name in sheet_names {
+        let input_sheet = input_workbook.worksheet_range(&sheet_name).unwrap().unwrap(); // get sheet contents
         let mut output_sheet = output_workbook.add_worksheet(Some(&sheet_name)).unwrap(); // create sheet inside output file
 
         if sheet_name == "Table_0" {
@@ -217,34 +205,22 @@ pub fn process(fp: &str, input_dir: &str, output_dir: &str) -> PyResult<()> {
     Ok(())
 }
 
+
 #[pyfunction]
-pub fn process_all(input_dir: &str, output_dir: &str, sequential: bool) -> PyResult<()> {
+pub fn process_all(input_dir: &str, output_dir: &str) -> PyResult<()> {
     let mut files: Vec<String> = vec![];
     for file in std::fs::read_dir(input_dir).unwrap() {
-        files.push( file.unwrap().file_name().to_str().unwrap().to_string() )
-    }
-    let start_time = Instant::now();
-
-    if sequential {
-        for (index, file) in files.iter().enumerate() {
-            process(&file, input_dir, output_dir).unwrap();
-            println!("{file} ({}/{})", index+1, files.len())
+        if file.as_ref().unwrap().path().extension().unwrap().to_str().unwrap() == "xlsx" {
+            files.push( file.unwrap().file_name().to_str().unwrap().to_string());
         }
-
-    } else {
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(4) // Set the number of threads in the pool
-            .build()
-            .unwrap();
-
-
-        let _ = pool.install(|| {
-            files.par_iter() // Use parallel iterator
-                .map(|item| process(item, input_dir, output_dir).unwrap()) // Replace with your computation
-        });
     }
 
-    println!("{:#?}", Instant::now() - start_time);
+    let start_time = Instant::now();
+    for (index, file) in files.iter().enumerate() {
+        process(&(input_dir.to_string() + file), &(output_dir.to_string() + file)).unwrap();
+        println!("{file} ({}/{})", index+1, files.len())
+    }
+    println!("Completed in: {:#?}", Instant::now() - start_time);
     Ok(())
 }
 
@@ -254,3 +230,8 @@ fn decimal_processing_xlsx_vesmar(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(process_all, m)?)?;
     Ok(())
 }
+
+// fn main() {
+//     process_all("input", "output").unwrap();
+//
+// }

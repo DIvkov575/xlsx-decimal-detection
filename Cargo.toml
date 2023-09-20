@@ -1,6 +1,6 @@
 [package]
 name = "decimal_processing_xlsx_vesmar"
-version = "0.2.4"
+version = "0.4.1"
 
 edition = "2021"
 
@@ -27,5 +27,8 @@ rustflags = [
 ]
 
 [package.metadata.maturin.manylinux]
+py36 = true
+py37 = true
+py38 = true
 py39 = true
 py310 = true
